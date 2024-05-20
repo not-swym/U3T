@@ -1,56 +1,56 @@
-class U3T:
-    def __init__(self):
-        self.board = [[0 for _ in range(9)] for _ in range(9)]  # 0 is empty, -1 is opponent, 1 is player
+import copy
 
-        self.current_local_board = 5
+class uttt:
+    def __init__(self) -> None:
         self.current_player = 1
+        self.current_board = None
+        self.possible_moves = []
+        self.sub_board_state = [0 for _ in range(9)]
+        self.game_state = False
+        self.make_board()
 
-    def possible_moves(self, sub_board, player):  # lists all possible moves in a sub-board
-        possible = []
-        for i in range(len(self.board[sub_board])):
-            if self.board[sub_board][i] == 0 and self.board[sub_board][i] != player:
-                possible.append(i)
-        return possible
+    def make_board(self):
+        self.board = [[0 for _ in range(9)] for _ in range(9)]
 
-    def move(self, sub_board, cell, player):  # check if move is legal make move and returns current player, sub-board
-        if self.current_local_board == sub_board and self.current_player == player:
-            if cell in self.possible_moves(sub_board, player):
-                self.board[sub_board][cell] = player
+    def find_possible_moves(self, sub_board):
+        self.possible_moves = []
+        for cell in range(9):
+            if self.board[sub_board][cell] == 0:
+                self.possible_moves.append((cell, sub_board))
 
-        return [(1 if player == -1 else -1), cell]
+        if not self.possible_moves:
+            for subboard in range(9):
+                for cell in range(9):
+                    if self.board[subboard][cell] == 0:
+                        self.possible_moves.append((cell, subboard))
 
-    def sub_board_won(self, sub_board, player):  # checks if a sub-board is won or in-progress and returns bool
-        rows = self.board[sub_board]
-        cols = [self.board[i][sub_board] for i in range(9)]
-        diagonal_1 = [self.board[i][i] for i in range(9) if i % 10 == 0]
-        diagonal_2 = [self.board[i][j] for i, j in zip(range(8, -1, -1), range(9)) if i != 4]
+    def move(self, sub_board, cell):
+        if (cell, sub_board) in self.possible_moves:
+            new_board = copy.deepcopy(self.board)
+            if new_board[sub_board][cell] == 0:
+                new_board[sub_board][cell] = self.current_player
+                new_current_player = 1 if self.current_player == -1 else -1
+                new_current_board = cell
+                new_sub_board_state = [self.current_player if self.check_win(new_board[sub_board]) else 0 for sub_board in range(9)]
+                return new_board, new_current_player, new_current_board, new_sub_board_state
+        return None, None, None, None
 
-        win_conditions = [rows, cols, diagonal_1, diagonal_2]
+    def apply_move(self, new_board, new_current_player, new_current_board, new_sub_board_state):
+        if new_board:
+            self.board = new_board
+            self.current_player = new_current_player
+            self.current_board = new_current_board
+            self.sub_board_state = new_sub_board_state
 
-        for condition in win_conditions:
-            if condition.count(player) == 3:
+    def check_win(self, state):
+        winning_combinations = [
+            [0, 1, 2], [3, 4, 5], [6, 7, 8],  # Rows
+            [0, 3, 6], [1, 4, 7], [2, 5, 8],  # Columns
+            [0, 4, 8], [2, 4, 6]              # Diagonals
+        ]
+
+        for combo in winning_combinations:
+            if all(state[i] == self.current_player for i in combo):
                 return True
-        return False
-
-    def is_draw(self, sub_board):  # checks if a sub-board is drawn and returns boolean
-        return (all(cell != 0 for cell in self.board[sub_board])
-                and not self.sub_board_won(sub_board, 1)
-                and not self.sub_board_won(sub_board, -1))
-
-        # set the drawn sub_board to a value that indicates drawn
-
-    def game_over(self):  # checks if the game is won and returns [-1, 0, 1] => [lost, draw, won]
-        for i in range(9):
-            if self.sub_board_won(i, 1) or self.sub_board_won(i, -1):
-                return 1
-        # add a scenario where the game is drawn
-        return -1
-
-    def update(self, sub_board):
-        if self.sub_board_won(self.board[sub_board], self.current_player):
-            for cell in range(9):
-                self.board[sub_board][cell] = self.current_player
-
-
-# NOTE: Call update after every move, and update the current_local_board and current_player from the
-# return value of self.move
+        return False # This means the game is draw or in progress 
+        
